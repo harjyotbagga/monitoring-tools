@@ -37,22 +37,23 @@ services:
       - internal
       - fetch
 
-  celery_beat:
-    container_name: celery_beat
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file:
-      - .env
-    command: sh -c "sh ./run_celery_beat.sh"
-    volumes:
-      - ./:/usr/src/app/
-    networks:
-      - internal
-      - fetch
-    depends_on:
-      - redis-server
-      - db
+  # celery_beat:
+  #   container_name: celery_beat
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   env_file:
+  #     - .env
+  #   command: sh -c "sh ./run_celery_beat.sh"
+  #   volumes:
+  #     - ./:/usr/src/app/
+  #   networks:
+  #     - internal
+  #     - fetch
+  #     - logging-nw
+  #   depends_on:
+  #     - redis-server
+  #     - db
 
   celery_worker:
     container_name: celery_worker
@@ -67,10 +68,56 @@ services:
     networks:
       - internal
       - fetch
+      - logging-nw
     depends_on:
       - redis-server
       - db
 
+  fluentd:
+    container_name: fluentd
+    user: root
+    build:
+      context: .
+    image: fluentd
+    volumes:
+      - ./logs:/fluentd/log/files/
+      - ./fluentd:/fluentd/etc/
+    networks:
+      - logging-nw
+    depends_on:
+      - elasticsearch
+    
+  elasticsearch:
+    image: elasticsearch:7.17.0
+    container_name: elasticsearch
+    environment:
+    - node.name=elasticsearch
+    - cluster.initial_master_nodes=elasticsearch
+    - bootstrap.memory_lock=true
+    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - 9200:9200
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - logging-nw
+  
+  kibana:
+    image: kibana:7.17.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - logging-nw
+
 networks:
   internal:
   fetch:
+  logging-nw:
