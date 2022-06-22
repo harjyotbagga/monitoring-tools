@@ -1,13 +1,20 @@
+import time
 import asyncio
 import logging
+from app import app
 from services import generateFakeUser
 from database import setup_db
 from logger import ApplicationLogger
-from app import app
-import time
 
-beat_logger = ApplicationLogger("Celery Beat Logger", "celery-beat-logs.log", logging.INFO)
-worker_logger = ApplicationLogger("Celery Worker Logger", "celery-worker-logs.log", logging.INFO)
+beat_logger = ApplicationLogger(
+    "Celery Beat Logger",
+    "celery-beat-logs.log",
+    logging.INFO)
+worker_logger = ApplicationLogger(
+    "Celery Worker Logger",
+    "celery-worker-logs.log",
+    logging.INFO)
+
 
 async def init_cron(sender):
     try:
@@ -17,11 +24,12 @@ async def init_cron(sender):
         beat_logger.info("Database Setup Complete.")
         every_seconds = 10
         sender.add_periodic_task(
-            every_seconds, 
+            every_seconds,
             generate_fake_user.s(),
         )
     except Exception as e:
         beat_logger.error(f"Error Setting Up Database: {e}")
+
 
 @app.task(name="generate_fake_user")
 def generate_fake_user():
