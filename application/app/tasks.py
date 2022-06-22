@@ -2,14 +2,16 @@ import asyncio
 import logging
 from services import generateFakeUser
 from database import setup_db
-from models import ApplicationLogger
+from logger import ApplicationLogger
 from app import app
+import time
 
-beat_logger = ApplicationLogger(__name__, "celery-beat-logs.log", logging.INFO)
-worker_logger = ApplicationLogger(__name__, "celery-worker-logs.log", logging.INFO)
+beat_logger = ApplicationLogger("Celery Beat Logger", "celery-beat-logs.log", logging.INFO)
+worker_logger = ApplicationLogger("Celery Worker Logger", "celery-worker-logs.log", logging.INFO)
 
 async def init_cron(sender):
     try:
+        time.sleep(10)
         beat_logger.info("Setting Up Database.")
         setup_db()
         beat_logger.info("Database Setup Complete.")
@@ -27,6 +29,7 @@ def generate_fake_user():
         fakeUser = generateFakeUser()
         worker_logger.info(f"Generated fake user: {fakeUser}")
         return_msg = fakeUser.addUserToDatabase()
+        # return_msg = ""
         worker_logger.info(return_msg)
         return return_msg
     except Exception as e:

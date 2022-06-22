@@ -54,6 +54,9 @@ services:
     depends_on:
       - redis-server
       - db
+      - fluentd-app
+      - elasticsearch
+      - celery_worker
 
   celery_worker:
     container_name: celery_worker
@@ -72,50 +75,54 @@ services:
     depends_on:
       - redis-server
       - db
+      - fluentd-app
+      - elasticsearch
 
-  # fluentd:
-  #   container_name: fluentd
-  #   user: root
-  #   build:
-  #     context: .
-  #   image: fluentd
-  #   volumes:
-  #     - ./logs:/fluentd/log/files/
-  #     - ./fluentd:/fluentd/etc/
-  #   networks:
-  #     - logging-nw
-  #   depends_on:
-  #     - elasticsearch
+  fluentd-app:
+    container_name: fluentd-app
+    user: root
+    build:
+      context: fluentd
+      dockerfile: Dockerfile
+    volumes:
+      - ./fluentd/logs/:/fluentd/log/files/
+      - ./fluentd/config/:/fluentd/etc/
+    networks:
+      - logging-nw
+    ports:
+      - 9880:9880
+    depends_on:
+      - elasticsearch
     
-  # elasticsearch:
-  #   image: elasticsearch:7.17.0
-  #   container_name: elasticsearch
-  #   environment:
-  #   - node.name=elasticsearch
-  #   - cluster.initial_master_nodes=elasticsearch
-  #   - bootstrap.memory_lock=true
-  #   - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-  #   ports:
-  #     - 9200:9200
-  #   ulimits:
-  #     memlock:
-  #       soft: -1
-  #       hard: -1
-  #   networks:
-  #     - logging-nw
+  elasticsearch:
+    container_name: elasticsearch
+    image: elasticsearch:7.17.0
+    environment:
+    - node.name=elasticsearch
+    - cluster.initial_master_nodes=elasticsearch
+    - bootstrap.memory_lock=true
+    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - 9200:9200
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - logging-nw
   
-  # kibana:
-  #   image: kibana:7.17.0
-  #   container_name: kibana
-  #   ports:
-  #     - "5601:5601"
-  #   environment:
-  #     ELASTICSEARCH_URL: http://elasticsearch:9200
-  #     ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-  #   depends_on:
-  #     - elasticsearch
-  #   networks:
-  #     - logging-nw
+  kibana:
+    image: kibana:7.17.0
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - logging-nw
 
 networks:
   internal:

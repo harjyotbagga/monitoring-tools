@@ -1,12 +1,5 @@
-import os
-import logging
-import pymongo
 from pymongo import MongoClient
-
-logger = logging.getLogger("database")
-
-MONGO_DB_LINK = os.getenv("MONGO_DB_LINK", "mongodb://localhost:27017/")
-DATABASE_NAME = os.getenv("DB_NAME", "FakeUserGeneration")
+from exporter import MONGO_DB_LINK, DATABASE_NAME
 
 DB_CONNECTION = None
 
