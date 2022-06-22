@@ -10,6 +10,7 @@ def get_mongo_client():
         DB_CONNECTION = MongoClient(MONGO_DB_LINK, connect=False)
     return DB_CONNECTION
 
+
 def setup_db():
     client = get_mongo_client()
     db = client[DATABASE_NAME]
