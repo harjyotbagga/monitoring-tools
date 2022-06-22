@@ -1,3 +1,5 @@
 __pycache__
 venv/
 celerybeat-schedule
+.env
+example-log.log

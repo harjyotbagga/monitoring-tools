@@ -1,0 +1,130 @@
+version: '3.7'
+
+services:
+  db:
+    container_name: db
+    image: mongo
+    ports:
+      - 27017:27017
+    networks:
+      - internal
+
+  # flower:
+  #   container_name: flower
+  #   build: .
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./:/usr/src/app/
+  #   working_dir: /usr/src/app/
+  #   restart: on-failure
+  #   command: sh -c "celery -A tasks flower"
+  #   ports:
+  #     - 5555:5555
+  #   networks:
+  #     - fetch
+  #   depends_on:
+  #     - redis-server
+
+  redis-server:
+    container_name: redis-server
+    image: redis
+    env_file:
+      - .env
+    ports:
+      - 6379:6379
+    networks:
+      - internal
+      - fetch
+
+  celery_beat:
+    container_name: celery_beat
+    build:
+      context: app
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    command: sh -c "sh ./run_celery_beat.sh"
+    volumes:
+      - ./app/:/usr/src/app/
+    networks:
+      - internal
+      - fetch
+      - logging-nw
+    depends_on:
+      - redis-server
+      - db
+      - fluentd-app
+      - elasticsearch
+      - celery_worker
+
+  celery_worker:
+    container_name: celery_worker
+    build:
+      context: app
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    command: sh -c "sh ./run_celery_tasks.sh"
+    volumes:
+      - ./app/:/usr/src/app/
+    networks:
+      - internal
+      - fetch
+      - logging-nw
+    depends_on:
+      - redis-server
+      - db
+      - fluentd-app
+      - elasticsearch
+
+  fluentd-app:
+    container_name: fluentd-app
+    user: root
+    build:
+      context: fluentd
+      dockerfile: Dockerfile
+    volumes:
+      - ./fluentd/logs/:/fluentd/log/files/
+      - ./fluentd/config/:/fluentd/etc/
+    networks:
+      - logging-nw
+    ports:
+      - 9880:9880
+    depends_on:
+      - elasticsearch
+    
+  elasticsearch:
+    container_name: elasticsearch
+    image: elasticsearch:7.17.0
+    environment:
+    - node.name=elasticsearch
+    - cluster.initial_master_nodes=elasticsearch
+    - bootstrap.memory_lock=true
+    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - 9200:9200
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - logging-nw
+  
+  kibana:
+    image: kibana:7.17.0
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - logging-nw
+
+networks:
+  internal:
+  fetch:
+  logging-nw:
